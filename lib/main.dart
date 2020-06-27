@@ -32,16 +32,17 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
 
-  Timer _timer;
-  List data = List<Widget>();
-  List localtext = List<String>();
-  Map changedata = new Map();
-  FocusNode _horizontalFocusNode;
-  FocusNode _verticalFocusNode;
-  TextEditingController _horizontalController;
-  TextEditingController _verticalController;
-  ScrollController _myScrollController;
+  Timer _timer; // 定时器
+  List data = List<Widget>(); // 渲染好的widget数组
+  List localtext = List<String>();  // 开奖数据,每个元素代表一行数据
+  Map changedata = new Map(); // 保存需要标红的开奖数据
+  FocusNode _horizontalFocusNode; // 横输入框焦点
+  FocusNode _verticalFocusNode; // 纵输入框焦点
+  TextEditingController _horizontalController;  // 横输入框控制器
+  TextEditingController _verticalController;  // 纵输入框控制器
+  ScrollController _myScrollController; // 下拉控制器
   var _futureBuilderFuture;
+  List _datas = List<String>();
 
   List range(int start, int end) {
     List _range = [];
@@ -52,16 +53,19 @@ class _HomePageState extends State<HomePage> {
   }
 
   List parseRule(List rule) {
+    // 解析输入的号码
     List<String> newrule = [];
     for(String r in rule) {
       if(newrule.indexOf(r) == -1) {
         newrule.add(r);
         var reverse = r.split("").reversed.join();
+        // 反转也算
         if(newrule.indexOf(reverse) == -1) {
           newrule.add(reverse);
         }
       }
     }
+    // 返回原号码,和原号码反转
     return newrule;
   }
 
@@ -75,13 +79,16 @@ class _HomePageState extends State<HomePage> {
     List four = [];
     List five = [];
     for(String i in localtext) {
+      // i代表单期开奖数据
+      // 去除空格,将开奖数据格式转换为2019062001605132
       String text = i.splitMapJoin((new RegExp(r'\d')),
         onMatch:    (m) => '${m.group(0)}',
         onNonMatch: (n) => ''
       );
-      var stext = text.substring(11);
-      var linetext = stext.split("");
+      var stext = text.substring(11); // 开奖号码
+      var linetext = stext.split(""); // 转换为数组
       for(int j=0; j<stext.length; j++) {
+        // 将开奖号(根据位置)分别存入5个数组保存
         switch(j) {
           case 0:
             one.add(linetext[j]);
@@ -103,29 +110,32 @@ class _HomePageState extends State<HomePage> {
         }
       }
       for(String r in horizontalrule) {
-        int a = stext.indexOf(r);
-        if(a != -1) {
-          if(changedata[count] != null){
-            changedata[count].addAll(range(a, a+r.length));
+        // 遍历横规则(包含反转规则)
+        int a = stext.indexOf(r); // 判断开奖号码是否符合横规则
+        if(a != -1) { // 符合横规则
+          if(changedata[count] != null){  // 该行已有标红开奖
+            changedata[count].addAll(range(a, a+r.length)); // 往后继续添加
           }else {
-            changedata[count] = range(a, a+r.length);
+            changedata[count] = range(a, a+r.length); // 直接添加标红开奖数据
           }
         }
       }
-      count += 1;
+      count += 1; // 行号+1,进入下一行
     }
-    List verticallist = [one, two, three, four, five];
+    List verticallist = [one, two, three, four, five];  // 纵,元素下标就是列数
     for(String r in verticalrule) {
+      // 遍历纵规则
       RegExp reg = RegExp(r);
       for(int v=0; v<verticallist.length; v++) {
-        Iterable<Match> matches = reg.allMatches(verticallist[v].join(""));
+        Iterable<Match> matches = reg.allMatches(verticallist[v].join("")); // 正则匹配第一列所有符合规则的数据
         for(Match m in matches) {
+          // 遍历符合的每一项
           List myrange = range(m.start, m.end);
           for(int index in myrange) {
             if(changedata[index] != null) {
-              if(!changedata[index].contains(v)) {
-                changedata[index].add(v);
-              }
+              if(!changedata[index].contains(v)) { // 修改数据种某行某列不存在
+                changedata[index].add(v); // 加进去
+              }//否则不做处理
             } else {
               changedata[index] = [v];
             }
@@ -386,11 +396,11 @@ class _HomePageState extends State<HomePage> {
       if(_horizontalController.text.isNotEmpty || _verticalController.text.isNotEmpty) {
         EasyLoading.show(status: "搜索...");
         parseData(
-          parseRule(_horizontalController.text.split(",")), 
+          parseRule(_horizontalController.text.split(",")),
           parseRule(_verticalController.text.split(","))
         );
         for (int i=0; i<data.length; i++) {
-          if(changedata[i] != null) {
+          if(changedata[i] != null && changedata[i].length > 0) {
             List<Widget> changewidget = [
               Padding(
                 padding: EdgeInsets.only(left: 5.0, right: 5.0),
@@ -480,6 +490,23 @@ class _HomePageState extends State<HomePage> {
       } else {
         // readfile().whenComplete(reload());
       }
+      if(_horizontalController.text.isNotEmpty && _verticalController.text.isEmpty) {
+        changedata.forEach((key, value) {
+          if(key > 15 && value.length >= 3) {
+            var d = localtext.sublist(key-15, key+16);
+            var data = d.join("\n");
+            _datas.add(data);
+          }
+        });
+        writeData(_datas.join("\n${'='*20}\n"));
+      }else if(_horizontalController.text.isEmpty && _verticalController.text.isNotEmpty) {
+        print(changedata);
+        changedata.forEach((key, value) {
+          if(key > 10 && value.length > 0) {
+            print("${key}-${value}");
+          }
+        });
+      }
     });
   }
 
@@ -496,8 +523,8 @@ class _HomePageState extends State<HomePage> {
             Row(
               children: <Widget>[
                 Padding(
-                padding: EdgeInsets.only(left: 5.0, right: 5.0),
-                child: Text("${texts[0]}"),
+                  padding: EdgeInsets.only(left: 5.0, right: 5.0),
+                  child: Text("${texts[0]}"),
                 ),
                 Padding(
                   padding: EdgeInsets.only(left: 5.0, right: 5.0),
@@ -573,50 +600,8 @@ class _HomePageState extends State<HomePage> {
 
       }
     }
-
     return data;
   }
-
-  // Future<List> futurereadfile() async {
-  //   File file = await getLocalFile();
-  //   List text = await file.readAsLines();
-  //   localtext = text;
-  //   text.forEach((item) {
-  //     var texts = item.split(" ");
-  //     data.add(
-  //         Row(
-  //           children: <Widget>[
-  //             Padding(
-  //               padding: EdgeInsets.only(left: 5.0, right: 5.0),
-  //               child: Text("${texts[0]}"),
-  //             ),
-  //             Padding(
-  //               padding: EdgeInsets.only(left: 5.0, right: 5.0),
-  //               child: Text("${texts[1]}"),
-  //             ),
-  //             Padding(
-  //               padding: EdgeInsets.only(left: 5.0, right: 5.0),
-  //               child: Text("${texts[2]}"),
-  //             ),
-  //             Padding(
-  //               padding: EdgeInsets.only(left: 5.0, right: 5.0),
-  //               child: Text("${texts[3]}"),
-  //             ),
-  //             Padding(
-  //               padding: EdgeInsets.only(left: 5.0, right: 5.0),
-  //               child: Text("${texts[4]}"),
-  //             ),
-  //             Padding(
-  //               padding: EdgeInsets.only(left: 5.0, right: 5.0),
-  //               child: Text("${texts[5]}"),
-  //             ),
-  //           ],
-  //         )
-  //       );
-  //   });
-
-  //   return data;
-  // }
 
 }
 

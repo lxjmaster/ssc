@@ -60,6 +60,7 @@ Future<bool> fileIsExists(File file) async {
   return file.exists();
 }
 
+// 开奖数据文件,不存在则创建,存在返回文件路径
 Future<File> getLocalFile() async {
      // 获取文档目录的路径
     Directory appStoDir = await getExternalStorageDirectory();
@@ -73,29 +74,24 @@ Future<File> getLocalFile() async {
     return file;
 }
 
-
-// Future<File> getLocalFile() async {
-//   final filepath = await getExternalStorageDirectory();
-//     var file = Directory(filepath.path+"/"+"123");
-//     try {
-//       bool exists = await file.exists();
-//       print(file);
-//       if (!exists) {
-//         await file.create();
-//       }
-//     } catch (e) {
-//       print(e);
-//     }
-// }
-
-// Future<String> readFile() async {
-//   File file = await getLocalFile();
-//   String content = await file.readAsString();
-  
-//   return content;
-// }
-
 void writeFile(content) async {
   File file = await getLocalFile();
   file.writeAsString(content);
+}
+
+// 保存开奖走势的文件
+Future<File> getDataFile() async {
+    Directory appStoDir = await getExternalStorageDirectory();
+    String dir = appStoDir.path;
+    String filepath = '$dir/data.txt';
+    final file = new File(filepath);
+    if(!await file.exists()) {
+      file.create();
+    }
+    return file;
+}
+
+void writeData(contents) async {
+  File file = await getDataFile();
+  file.writeAsString(contents);
 }
